@@ -5,7 +5,7 @@ from src.core.types.app_config import AppConfig
 
 class ConfigService:
     def __init__(self, config_path=None):
-        self._config_path = config_path if config_path else 'config.json'
+        self._config_path = config_path if config_path else './../../config.json'
         self._config = None
 
     def init_config(self):

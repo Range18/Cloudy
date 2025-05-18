@@ -1,3 +1,5 @@
+import base64
+import webbrowser
 from urllib.parse import urljoin
 
 import requests
@@ -10,16 +12,25 @@ class YandexDiskApiService:
         self.host = "https://cloud-api.yandex.net"
         self.api_version = "v1"
         self.base_url = urljoin(self.host, self.api_version)
-        self.access_token = ""
-        self.base_headers = {"Authorization": "OAuth " + self.access_token}
+        self.client_id = "2a5ac65c1d3f4fefbfa3c218ea0a78de"
+        self.base_headers = {"Authorization": "OAuth "}
 
-    def authenticate(self):
+    def authenticate(self, code=None):
+        if code is None:
+            webbrowser.open_new(f"https://oauth.yandex.ru/authorize?response_type=code&client_id={self.client_id}")
+            return
         try:
-            response = requests.get(f"https://login.yandex.ru/info?format=jwt",
-                                    headers=self.base_headers)
+            print("TESST")
+            print(base64.b64encode(":".encode()))
+            headers = {"Authorization": f"Basic {
+            base64.b64encode(":".encode())
+            }", "Content-type": "application/x-www-form-urlencoded"}
+            response = requests.post(f"https://oauth.yandex.ru",
+                                     headers=headers, data={"grant_type": "authorization_code", "code": code})
+            print(response.headers)
             if not response.ok:
                 raise HttpException(response.text, response.status_code)
-            return response.json()
+            return
         except HttpException as e:
             print("Error getting disk info")
             print(e)
@@ -47,7 +58,7 @@ class YandexDiskApiService:
             print(e)
 
     def download_file(self, path):
-        #TODO: safe file
+        # TODO: safe file
         try:
             download_link_json = self.__get_download_link(path)
             response = requests.get(download_link_json["href"])
@@ -101,6 +112,6 @@ class YandexDiskApiService:
             print("Error uploading file")
             print(e)
 
-    #TODO implement
+    # TODO implement
     def update_file(self):
         pass
