@@ -4,6 +4,7 @@ import time
 from watchdog.observers import Observer
 
 from file_handler import FileHandler
+from src.configs.config_service import ConfigService
 
 
 def main():
@@ -15,9 +16,13 @@ def main():
         print("  -h, --help")
         exit(0)
 
+    config_service = ConfigService()
+    config_service.init_config()
+    config = config_service.get_config()
+
     event_handler = FileHandler()
     observer = Observer()
-    observer.schedule(event_handler, 'D:\PyProjects\Cloud\\test', recursive=True)
+    observer.schedule(event_handler, config.path, recursive=True)
     observer.start()
 
     try:

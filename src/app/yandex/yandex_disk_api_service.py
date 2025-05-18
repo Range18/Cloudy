@@ -14,7 +14,15 @@ class YandexDiskApiService:
         self.base_headers = {"Authorization": "OAuth " + self.access_token}
 
     def authenticate(self):
-        pass
+        try:
+            response = requests.get(f"https://login.yandex.ru/info?format=jwt",
+                                    headers=self.base_headers)
+            if not response.ok:
+                raise HttpException(response.text, response.status_code)
+            return response.json()
+        except HttpException as e:
+            print("Error getting disk info")
+            print(e)
 
     def get_disk_info(self):
         try:
@@ -26,8 +34,28 @@ class YandexDiskApiService:
             print("Error getting disk info")
             print(e)
 
-    def download_file(self):
-        pass
+    def __get_download_link(self, path):
+        try:
+            response = requests.get(self.base_url + "/disk/resources/download",
+                                    params={"path": path},
+                                    headers=self.base_headers)
+            if not response.ok:
+                raise HttpException(response.text, response.status_code)
+            return response.json()
+        except HttpException as e:
+            print("Error getting download link")
+            print(e)
+
+    def download_file(self, path):
+        #TODO: safe file
+        try:
+            download_link_json = self.__get_download_link(path)
+            response = requests.get(download_link_json["href"])
+            if not response.ok:
+                raise HttpException(response.text, response.status_code)
+        except HttpException as e:
+            print("Error downloading file")
+            print(e)
 
     def __get_upload_link(self, path, overwrite=False):
         try:
@@ -44,7 +72,6 @@ class YandexDiskApiService:
     def upload_file(self, path, destination, overwrite=False):
         try:
             upload_link_json = self.__get_upload_link(destination, overwrite)
-            print(upload_link_json)
             response = requests.put(upload_link_json["href"], data=open(path, "rb"))
             if not response.ok:
                 raise HttpException(response.text, response.status_code)
@@ -73,3 +100,7 @@ class YandexDiskApiService:
         except HttpException as e:
             print("Error uploading file")
             print(e)
+
+    #TODO implement
+    def update_file(self):
+        pass
