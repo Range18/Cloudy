@@ -10,3 +10,6 @@ test
 
 # Environment
 .env
+
+# Configs
+yandex_config.json

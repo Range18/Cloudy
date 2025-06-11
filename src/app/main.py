@@ -1,13 +1,9 @@
-import asyncio
 import sys
-import threading
 import time
 
-import uvicorn
 from watchdog.observers import Observer
 
 from file_handler import FileHandler
-from src.app.auth_handler import app, start_server
 from src.app.cloud_service import CloudService
 from src.configs.config_service import ConfigService
 from src.core.types.cloud_services_enum import CloudServices
@@ -23,13 +19,14 @@ def main():
         exit(0)
 
     config_service = ConfigService()
-    config_service.init_config()
+    config_service.init_configs()
     config = config_service.get_config()
 
     cloud_service = CloudService()
     cloud_service.authenticate(service=CloudServices.YANDEX)
+    cloud_service.init_root(config.path.split("\\")[-1], CloudServices.YANDEX)
 
-    event_handler = FileHandler()
+    event_handler = FileHandler(config.path)
     observer = Observer()
     observer.schedule(event_handler, config.path, recursive=True)
     observer.start()
@@ -43,12 +40,4 @@ def main():
 
 
 if __name__ == '__main__':
-    mainTread = threading.Thread(target=main)
-    serverThread = threading.Thread(target=start_server)
-
-    serverThread.start()
-    mainTread.start()
-
-    mainTread.join()
-    serverThread.join()
-
+    main()
