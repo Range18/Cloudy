@@ -38,3 +38,9 @@ class CloudService:
 
     def move(self, from_path, to_path):
         self.yandex_api_service.move(from_path, to_path)
+
+    def get_dir_files_list(self, path):
+        response = self.yandex_api_service.get_dir_files_list(path)
+
+        for item in response["_embedded"]["items"]:
+            print(item["name"])

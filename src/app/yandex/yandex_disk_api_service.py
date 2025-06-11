@@ -48,6 +48,16 @@ class YandexDiskApiService(metaclass=Singleton):
             print("Ошибка авторизации с помощью Яндекс.Диск")
             print(e)
 
+    def get_dir_files_list(self, path):
+        try:
+            response = requests.get(self.base_url + "/disk/resources", params={"path": path}, headers=self._get_base_headers())
+            if not response.ok:
+                raise HttpException(response.text, response.status_code)
+            return response.json()
+        except HttpException as e:
+            print("Error getting disk info")
+            print(e)
+
     def get_disk_info(self):
         try:
             response = requests.get(self.base_url + "/disk", headers=self._get_base_headers())
