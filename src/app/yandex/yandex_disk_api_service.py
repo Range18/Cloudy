@@ -1,4 +1,5 @@
 import base64
+import json
 import webbrowser
 from urllib.parse import urljoin
 
@@ -11,6 +12,7 @@ from src.core.singleton import Singleton
 
 class YandexDiskApiService(metaclass=Singleton):
     def __init__(self):
+        self.token_file = "yandex_session.json"
         config = ConfigService().get_yandex_config()
         self.host = "https://cloud-api.yandex.net"
         self.api_version = "v1"
@@ -18,16 +20,22 @@ class YandexDiskApiService(metaclass=Singleton):
         self._client_id = config.client_id
         self._client_secret = config.client_secret
         self.access_token = None
+        self.refresh_token = None
+        self.token_expires_at = None
 
     def _get_base_headers(self):
         return {"Authorization": f"OAuth {self.access_token}"}
 
     def authenticate(self):
         try:
-            webbrowser.open_new(f"https://oauth.yandex.ru/authorize?response_type=code&client_id={self._client_id}")
-            code = input("Введите код со страницы:")
+            webbrowser.open_new(
+                f"https://oauth.yandex.ru/authorize?response_type=code&client_id={self._client_id}"
+            )
+            code = input("Введите код со страницы: ")
 
-            encoded = base64.b64encode(f"{self._client_id}:{self._client_secret}".encode())
+            encoded = base64.b64encode(
+                f"{self._client_id}:{self._client_secret}".encode()
+            )
             headers = {
                 "Authorization": f"Basic {encoded.decode()}",
                 "Content-type": "application/x-www-form-urlencoded"
@@ -39,13 +47,23 @@ class YandexDiskApiService(metaclass=Singleton):
             }
 
             response = requests.post("https://oauth.yandex.ru/token", headers=headers, data=data)
-            self.access_token = response.json()["access_token"]
+            tokens = response.json()
+
             if not response.ok:
                 raise HttpException(response.text, response.status_code)
 
-            print("Вы успешно авторизовались")
+            self.access_token = tokens.get("access_token")
+
+            # Сохраняем токены в файл
+            with open(self.token_file, "w", encoding="utf-8") as f:
+                json.dump(tokens, f, ensure_ascii=False, indent=4)
+
+            print("Вы успешно авторизовались. Токены сохранены в файл.")
         except HttpException as e:
             print("Ошибка авторизации с помощью Яндекс.Диск")
+            print(e)
+        except Exception as e:
+            print("Произошла непредвиденная ошибка:")
             print(e)
 
     def get_dir_files_list(self, path):

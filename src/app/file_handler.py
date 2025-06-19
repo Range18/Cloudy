@@ -5,10 +5,10 @@ from src.core.utils.encode_path import encode_relative_path
 
 
 class FileHandler(FileSystemEventHandler):
-    def __init__(self, root):
+    def __init__(self, root, cloud_service: CloudService):
         self.root = root
         self.root_parent = path.dirname(self.root)
-        self.cloud_service = CloudService()
+        self.cloud_service = cloud_service
 
     def on_modified(self, event):
         print(f'Изменено: {event.src_path}')

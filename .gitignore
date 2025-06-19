@@ -1,15 +1,16 @@
 # PyCharm cache
 .idea
 
-# Private files
-token.json
-credentials.json
-
 # Test dir
 test
 
 # Environment
 .env
 
-# Configs
-yandex_config.json
+# Credentials
+yandex_credentials.json
+google_credentials.json
+
+# Sessions
+google_session.json
+yandex_session.json

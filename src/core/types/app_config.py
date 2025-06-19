@@ -2,7 +2,7 @@ class AppConfig:
     def __init__(self, json):
         self._json = json
         self.path = json['path']
-        self.name = json['services']
+        self.services = json['services']
 
     def __dict__(self):
         return self._json
