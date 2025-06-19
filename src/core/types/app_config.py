@@ -3,6 +3,7 @@ class AppConfig:
         self._json = json
         self.path = json['path']
         self.services = json['services']
+        self.mode = json['mode']
 
     def __dict__(self):
         return self._json

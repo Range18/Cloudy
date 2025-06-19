@@ -1,6 +1,9 @@
 import base64
 import json
+import os
+import time
 import webbrowser
+from pathlib import Path
 from urllib.parse import urljoin
 
 import requests
@@ -26,19 +29,60 @@ class YandexDiskApiService(metaclass=Singleton):
     def _get_base_headers(self):
         return {"Authorization": f"OAuth {self.access_token}"}
 
+    def _save_session(self, tokens):
+        self.access_token = tokens.get("access_token")
+        self.refresh_token = tokens.get("refresh_token")  # Not always provided
+        expires_in = tokens.get("expires_in", 3600)
+        self.token_expires_at = int(time.time()) + expires_in
+
+        with open(self.token_file, "w", encoding="utf-8") as f:
+            json.dump({
+                "access_token": self.access_token,
+                "refresh_token": self.refresh_token,
+                "token_expires_at": self.token_expires_at
+            }, f, ensure_ascii=False, indent=2)
+
+    def _load_session(self):
+        if os.path.exists(self.token_file):
+            try:
+                with open(self.token_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    self.access_token = data.get("access_token")
+                    self.refresh_token = data.get("refresh_token")
+                    self.token_expires_at = data.get("token_expires_at")
+            except (json.JSONDecodeError, IOError) as e:
+                print("Error loading tokens from file:", e)
+
+    def _is_token_valid(self):
+        return self.access_token and self.token_expires_at and int(time.time()) < self.token_expires_at - 60
+
     def authenticate(self):
+        self._load_session()
+        if self._is_token_valid():
+            print("Using saved access_token.")
+            return
+
+        if self.refresh_token:
+            try:
+                self._refresh_token()
+                print("access_token refreshed using refresh_token.")
+                return
+            except Exception as e:
+                print("Error refreshing token. Proceeding with full authorization.", e)
+
+        self._full_auth_flow()
+
+    def _full_auth_flow(self):
         try:
             webbrowser.open_new(
                 f"https://oauth.yandex.ru/authorize?response_type=code&client_id={self._client_id}"
             )
-            code = input("Введите код со страницы: ")
+            code = input("Enter the code from the browser: ").strip()
 
-            encoded = base64.b64encode(
-                f"{self._client_id}:{self._client_secret}".encode()
-            )
+            auth_header = base64.b64encode(f"{self._client_id}:{self._client_secret}".encode()).decode()
             headers = {
-                "Authorization": f"Basic {encoded.decode()}",
-                "Content-type": "application/x-www-form-urlencoded"
+                "Authorization": f"Basic {auth_header}",
+                "Content-Type": "application/x-www-form-urlencoded"
             }
 
             data = {
@@ -47,33 +91,50 @@ class YandexDiskApiService(metaclass=Singleton):
             }
 
             response = requests.post("https://oauth.yandex.ru/token", headers=headers, data=data)
-            tokens = response.json()
-
             if not response.ok:
                 raise HttpException(response.text, response.status_code)
 
-            self.access_token = tokens.get("access_token")
-
-            # Сохраняем токены в файл
-            with open(self.token_file, "w", encoding="utf-8") as f:
-                json.dump(tokens, f, ensure_ascii=False, indent=4)
-
-            print("Вы успешно авторизовались. Токены сохранены в файл.")
-        except HttpException as e:
-            print("Ошибка авторизации с помощью Яндекс.Диск")
-            print(e)
+            tokens = response.json()
+            self._save_session(tokens)
+            print("Authentication completed successfully.")
         except Exception as e:
-            print("Произошла непредвиденная ошибка:")
-            print(e)
+            print("Error obtaining token:", e)
+
+    def _refresh_token(self):
+        if not self.refresh_token:
+            raise Exception("refresh_token is missing.")
+
+        auth_header = base64.b64encode(f"{self._client_id}:{self._client_secret}".encode()).decode()
+        headers = {
+            "Authorization": f"Basic {auth_header}",
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+
+        data = {
+            "grant_type": "refresh_token",
+            "refresh_token": self.refresh_token
+        }
+
+        response = requests.post("https://oauth.yandex.ru/token", headers=headers, data=data)
+        if not response.ok:
+            raise HttpException(response.text, response.status_code)
+
+        tokens = response.json()
+        self._save_session(tokens)
+
+    def _ensure_authenticated(self):
+        self.authenticate()
 
     def get_dir_files_list(self, path):
         try:
-            response = requests.get(self.base_url + "/disk/resources", params={"path": path}, headers=self._get_base_headers())
+            response = requests.get(self.base_url + "/disk/resources",
+                                    params={"path": f"/{Path(ConfigService().get_config().path).name}{path}"},
+                                    headers=self._get_base_headers())
             if not response.ok:
                 raise HttpException(response.text, response.status_code)
             return response.json()
         except HttpException as e:
-            print("Error getting disk info")
+            print("Failed to retrieve directory file list.")
             print(e)
 
     def get_disk_info(self):
@@ -83,7 +144,7 @@ class YandexDiskApiService(metaclass=Singleton):
                 raise HttpException(response.text, response.status_code)
             return response.json()
         except HttpException as e:
-            print("Error getting disk info")
+            print("Unable to fetch disk information.")
             print(e)
 
     def get_file_meta(self, path):
@@ -96,7 +157,7 @@ class YandexDiskApiService(metaclass=Singleton):
                 raise HttpException(response.text, response.status_code)
             return response.json()
         except HttpException as e:
-            print("Error getting file meta info")
+            print("Failed to get file metadata.")
             print(e)
 
     def is_file_exists(self, path):
@@ -111,18 +172,27 @@ class YandexDiskApiService(metaclass=Singleton):
                 raise HttpException(response.text, response.status_code)
             return response.json()
         except HttpException as e:
-            print("Error getting download link")
+            print("Failed to get download link.")
             print(e)
 
-    def download_file(self, path):
-        # TODO: safe file
+    def download_file(self, path, save_to=None):
         try:
             download_link_json = self.__get_download_link(path)
-            response = requests.get(download_link_json["href"])
+            download_url = download_link_json["href"]
+
+            response = requests.get(download_url, stream=True)
             if not response.ok:
                 raise HttpException(response.text, response.status_code)
+
+            filename = save_to or os.path.basename(path)
+
+            with open(filename, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            print(f"File downloaded and saved as: {filename}")
+
         except HttpException as e:
-            print("Error downloading file")
+            print("Error occurred while downloading the file.")
             print(e)
 
     def __get_upload_link(self, path, overwrite=False):
@@ -134,30 +204,29 @@ class YandexDiskApiService(metaclass=Singleton):
                 raise HttpException(response.text, response.status_code)
             return response.json()
         except HttpException as e:
-            print("Error getting upload link")
+            print("Failed to retrieve upload link.")
             print(e)
 
     def upload_file(self, path, destination, overwrite=False):
         try:
             upload_link_json = self.__get_upload_link(destination, overwrite)
             response = requests.put(upload_link_json["href"], data=open(path, "rb"))
-            print(response)
             if not response.ok:
                 raise HttpException(response.text, response.status_code)
+            print(f"File '{path}' uploaded to '{destination}'.")
         except HttpException as e:
-            print("Error uploading file")
+            print("File upload failed.")
             print(e)
 
     def make_dir(self, path):
         try:
             response = requests.put(self.base_url + "/disk/resources", params={"path": path},
                                     headers=self._get_base_headers())
-            print(response)
             if not response.ok:
                 raise HttpException(response.text, response.status_code)
             return response.json()
         except HttpException as e:
-            print("Error uploading file")
+            print("Failed to create directory.")
             print(e)
 
     def remove_file_or_dir(self, path):
@@ -165,12 +234,11 @@ class YandexDiskApiService(metaclass=Singleton):
             response = requests.delete(self.base_url + "/disk/resources",
                                        params={"path": path, "permanently": "true", "force_async": "true"},
                                        headers=self._get_base_headers())
-            print(response)
             if not response.ok:
                 raise HttpException(response.text, response.status_code)
             return response.json()
         except HttpException as e:
-            print("Error deleting file or directory")
+            print("Error deleting file or folder.")
             print(e)
 
     def update_file(self, path, destination):
@@ -182,10 +250,9 @@ class YandexDiskApiService(metaclass=Singleton):
                                      params={"from": from_rel_path, "path": to_rel_path, "overwrite": overwrite,
                                              "force_async": "true"},
                                      headers=self._get_base_headers())
-            print(response)
             if not response.ok:
                 raise HttpException(response.text, response.status_code)
             return response.json()
         except HttpException as e:
-            print("Error moving file pr directory")
+            print("Failed to move file or directory.")
             print(e)

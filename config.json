@@ -1,4 +1,6 @@
 {
-  "path": "D:\\PyProjects\\Cloud\\test",
-  "services": []
+  "path": "",
+  "services": [
+  ],
+  "mode": "DEV"
 }

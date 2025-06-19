@@ -59,9 +59,16 @@ class ConfigService(metaclass=Singleton):
                 json.dump(config_data, config_file, ensure_ascii=False, indent=2)
 
             self._config = AppConfig(config_data)
-            print(f"Сервис '{service_name}' добавлен в конфиг.")
-        else:
-            print(f"Сервис '{service_name}' уже существует в конфиге.")
+            print(f"Service '{service_name}' has been added to the config.")
 
+    def change_root(self, path):
+        with self._config_path.open('r', encoding='utf-8') as config_file:
+            config_data = json.load(config_file)
 
+            config_data["path"] = path
 
+            with self._config_path.open('w', encoding='utf-8') as config_file:
+                json.dump(config_data, config_file, ensure_ascii=False, indent=2)
+
+            self._config = AppConfig(config_data)
+            print(f"Root directory changed to {path}")

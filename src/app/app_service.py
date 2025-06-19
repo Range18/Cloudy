@@ -1,3 +1,4 @@
+import os
 import time
 
 from watchdog.observers import Observer
@@ -27,11 +28,25 @@ class AppService:
         observer.join()
 
     @staticmethod
-    def choose_directory(path):
-        pass
+    def choose_directory(path=None):
+        config_service = ConfigService()
+        if path and os.path.isdir(path):
+            print(f"Using directory from configuration: {path}")
+            return path
+
+        manual_path = input("Enter directory path: ").strip()
+
+        if manual_path:
+            if os.path.isdir(manual_path):
+                config_service.change_root(manual_path)
+                return manual_path
+            else:
+                print("Invalid path. Exiting.")
+                exit(1)
 
     @staticmethod
-    def choose_service(config, config_service):
+    def choose_service(config):
+        config_service = ConfigService()
         service = None
         if len(config.services) == 0:
             choice = input("Choose a service:\n 1. Yandex Disk \n 2. Google Drive\n> ").strip()

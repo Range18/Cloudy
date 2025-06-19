@@ -1,7 +1,11 @@
+import os
+
 from src.app.google.google_disk_api_service import GoogleDriveApiService
 from src.app.yandex.yandex_disk_api_service import YandexDiskApiService
 from src.core.types.cloud_services_enum import CloudServices
 
+def normalize_path(path):
+    return '/' + path.strip().replace('\\', '/').lstrip('/')
 
 class CloudService:
     def __init__(self, service: CloudServices):
@@ -28,7 +32,8 @@ class CloudService:
             pass
 
     def download_file(self, path):
-        pass
+        if self.service == CloudServices.YANDEX:
+            self.yandex_api_service.download_file(normalize_path(path))
 
     def create_file(self, path, destination, overwrite=False):
         if self.service == CloudServices.YANDEX:
@@ -40,19 +45,26 @@ class CloudService:
         if self.service == CloudServices.YANDEX:
             self.yandex_api_service.make_dir(path)
         if self.service == CloudServices.GOOGLE:
-            pass
+            self.google_api_service.create_folder(path)
 
     def remove_file_or_dir(self, path):
         if self.service == CloudServices.YANDEX:
             self.yandex_api_service.remove_file_or_dir(path)
         if self.service == CloudServices.GOOGLE:
-            pass
+            file = self._get_file_by_name(path)
+            if file:
+                self.google_api_service.delete_file_or_folder(file['id'])
+
+    def _get_file_by_name(self, name):
+        files = self.google_api_service.list_files(f"name='{name}' and trashed=false")
+        return files[0] if files else None
 
     def update(self, path, destination):
         if self.service == CloudServices.YANDEX:
             self.yandex_api_service.update_file(path, destination)
         if self.service == CloudServices.GOOGLE:
-            pass
+            filename = os.path.basename(path)
+            self.google_api_service.update_file(path, filename, parent_id=destination)
 
     def move(self, from_path, to_path):
         if self.service == CloudServices.YANDEX:

@@ -245,3 +245,37 @@ class GoogleDriveApiService(metaclass=Singleton):
         except HttpException as e:
             print("Ошибка перемещения файла")
             print(e)
+
+    def update_file(self, filepath, filename, parent_id=None):
+        self._ensure_authenticated()
+
+        # Проверка, существует ли файл с таким именем в папке
+        query = f"name='{filename}' and trashed=false"
+        if parent_id:
+            query += f" and '{parent_id}' in parents"
+
+        files = self.list_files(query=query)
+        if files:
+            file_id = files[0]['id']
+            print(f"Файл {filename} найден, обновляется...")
+            metadata = {"name": filename}
+            if parent_id:
+                metadata["parents"] = [parent_id]
+
+            files = {
+                "metadata": ("metadata", json.dumps(metadata), "application/json"),
+                "file": open(filepath, "rb")
+            }
+
+            response = requests.patch(
+                f"{self.upload_url}/{file_id}?uploadType=multipart",
+                headers=self._get_headers(),
+                files=files
+            )
+            if not response.ok:
+                raise HttpException(response.text, response.status_code)
+            return response.json()
+        else:
+            print(f"Файл {filename} не найден, создаётся новый...")
+            return self.upload_file(filepath, filename, parent_id)
+
