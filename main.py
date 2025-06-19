@@ -1,9 +1,9 @@
 import sys
 import threading
 
-from file_handler import FileHandler
 from src.app.app_service import AppService
 from src.app.cloud_service import CloudService
+from src.app.file_handler import FileHandler
 from src.configs.config_service import ConfigService
 
 
