@@ -3,7 +3,6 @@ import json
 import os
 import time
 import webbrowser
-from pathlib import Path
 from urllib.parse import urljoin
 
 import requests
@@ -16,7 +15,7 @@ from src.core.singleton import Singleton
 class YandexDiskApiService(metaclass=Singleton):
     def __init__(self):
         self.token_file = "yandex_session.json"
-        config = ConfigService().get_yandex_config()
+        config = ConfigService.get_yandex_config()
         self.host = "https://cloud-api.yandex.net"
         self.api_version = "v1"
         self.base_url = urljoin(self.host, self.api_version)
@@ -128,7 +127,7 @@ class YandexDiskApiService(metaclass=Singleton):
     def get_dir_files_list(self, path):
         try:
             response = requests.get(self.base_url + "/disk/resources",
-                                    params={"path": f"/{Path(ConfigService().get_config().path).name}{path}"},
+                                    params={"path": f"{ConfigService.get_config().root}{path}"},
                                     headers=self._get_base_headers())
             if not response.ok:
                 raise HttpException(response.text, response.status_code)

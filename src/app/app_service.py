@@ -29,7 +29,6 @@ class AppService:
 
     @staticmethod
     def choose_directory(path=None):
-        config_service = ConfigService()
         if path and os.path.isdir(path):
             print(f"Using directory from configuration: {path}")
             return path
@@ -38,7 +37,7 @@ class AppService:
 
         if manual_path:
             if os.path.isdir(manual_path):
-                config_service.change_root(manual_path)
+                ConfigService.change_root(manual_path)
                 return manual_path
             else:
                 print("Invalid path. Exiting.")
@@ -46,7 +45,6 @@ class AppService:
 
     @staticmethod
     def choose_service(config):
-        config_service = ConfigService()
         service = None
         if len(config.services) == 0:
             choice = input("Choose a service:\n 1. Yandex Disk \n 2. Google Drive\n> ").strip()
@@ -57,7 +55,7 @@ class AppService:
             else:
                 print("Unknown option. Exiting...")
                 exit(1)
-            config_service.add_service(service)
+            ConfigService.add_service(service)
         else:
             service = CloudServices[config.services[0]]
         return service

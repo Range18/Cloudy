@@ -2,10 +2,13 @@ import os
 
 from src.app.google.google_disk_api_service import GoogleDriveApiService
 from src.app.yandex.yandex_disk_api_service import YandexDiskApiService
+from src.configs.config_service import ConfigService
 from src.core.types.cloud_services_enum import CloudServices
+
 
 def normalize_path(path):
     return '/' + path.strip().replace('\\', '/').lstrip('/')
+
 
 class CloudService:
     def __init__(self, service: CloudServices):
@@ -33,7 +36,7 @@ class CloudService:
 
     def download_file(self, path):
         if self.service == CloudServices.YANDEX:
-            self.yandex_api_service.download_file(normalize_path(path))
+            self.yandex_api_service.download_file(normalize_path(ConfigService.get_config().root + path))
 
     def create_file(self, path, destination, overwrite=False):
         if self.service == CloudServices.YANDEX:
