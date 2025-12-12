@@ -11,6 +11,11 @@ class AppService:
     @staticmethod
     def show_help():
         print("Usage: python main.py [OPTIONS]")
+        print("Backup Utility to Cloud Storages")
+        print(" Supported storages:"
+              "Google Drive"
+              "Yandex Disk"
+              )
         print("Options:")
         print("  -h, --help")
         exit(0)
@@ -47,7 +52,9 @@ class AppService:
     def choose_service(config):
         service = None
         if len(config.services) == 0:
-            choice = input("Choose a service:\n 1. Yandex Disk \n 2. Google Drive\n> ").strip()
+            choice = input(
+                "Choose a service:\n 1. Yandex Disk \n 2. Google Drive\n> "
+            ).strip()
             if choice == "1":
                 service = CloudServices.YANDEX
             elif choice == "2":

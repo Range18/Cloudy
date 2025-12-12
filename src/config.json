@@ -1,0 +1,8 @@
+{
+  "path": "D:\\PyProjects\\Cloud\\test",
+  "root": "/test",
+  "services": [
+    "YANDEX"
+  ],
+  "mode": "DEV"
+}

@@ -14,14 +14,16 @@ class FileHandler(FileSystemEventHandler):
 
     def on_modified(self, event):
         if self.mode == AppMode.DEV:
-            print(f'Modified: {event.src_path}')
+            print(f"Modified: {event.src_path}")
         if event.is_directory or "~" in event.src_path:
             return
-        return self.cloud_service.update(event.src_path, encode_relative_path(event.src_path, self.root_parent))
+        return self.cloud_service.update(
+            event.src_path, encode_relative_path(event.src_path, self.root_parent)
+        )
 
     def on_created(self, event):
         if self.mode == AppMode.DEV:
-            print(f'Created: {event.src_path}')
+            print(f"Created: {event.src_path}")
         if "~" in event.src_path:
             return
         encoded_path = encode_relative_path(event.src_path, self.root_parent)
@@ -32,17 +34,19 @@ class FileHandler(FileSystemEventHandler):
 
     def on_deleted(self, event):
         if self.mode == AppMode.DEV:
-            print(f'Deleted: {event.src_path}')
+            print(f"Deleted: {event.src_path}")
         if "~" in event.src_path:
             return
-        return self.cloud_service.remove_file_or_dir(encode_relative_path(event.src_path, self.root_parent))
+        return self.cloud_service.remove_file_or_dir(
+            encode_relative_path(event.src_path, self.root_parent)
+        )
 
     def on_moved(self, event):
         if self.mode == AppMode.DEV:
-            print(f'Moved: from {event.src_path} to {event.dest_path}')
+            print(f"Moved: from {event.src_path} to {event.dest_path}")
         if "~" in event.src_path:
             return
         self.cloud_service.move(
             encode_relative_path(event.src_path, self.root_parent),
-            encode_relative_path(event.dest_path, self.root_parent)
+            encode_relative_path(event.dest_path, self.root_parent),
         )

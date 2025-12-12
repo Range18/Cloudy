@@ -1,10 +1,10 @@
 class AppConfig:
     def __init__(self, json):
         self._json = json
-        self.path = json['path']
-        self.root = json['root']
-        self.services = json['services']
-        self.mode = json['mode']
+        self.path = json["path"]
+        self.root = json["root"]
+        self.services = json["services"]
+        self.mode = json["mode"]
 
     def __dict__(self):
         return self._json

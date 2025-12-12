@@ -1,6 +1,6 @@
-# src/core/types/google_service_config.py
 from dataclasses import dataclass
 from typing import List
+
 
 @dataclass
 class Installed:
@@ -12,12 +12,13 @@ class Installed:
     client_secret: str
     redirect_uris: List[str]
 
+
 @dataclass
 class GoogleServiceConfig:
     installed: Installed
 
     @staticmethod
-    def from_dict(data: dict) -> 'GoogleServiceConfig':
+    def from_dict(data: dict) -> "GoogleServiceConfig":
         installed_data = data.get("installed", {})
         installed = Installed(**installed_data)
         return GoogleServiceConfig(installed=installed)

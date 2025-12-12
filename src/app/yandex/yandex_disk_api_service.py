@@ -10,6 +10,7 @@ import requests
 from src.configs.config_service import ConfigService
 from src.core.exceptions.http_exception import HttpException
 from src.core.singleton import Singleton
+from src.core.types.app_mode_enum import AppMode
 
 
 class YandexDiskApiService(metaclass=Singleton):
@@ -35,11 +36,16 @@ class YandexDiskApiService(metaclass=Singleton):
         self.token_expires_at = int(time.time()) + expires_in
 
         with open(self.token_file, "w", encoding="utf-8") as f:
-            json.dump({
-                "access_token": self.access_token,
-                "refresh_token": self.refresh_token,
-                "token_expires_at": self.token_expires_at
-            }, f, ensure_ascii=False, indent=2)
+            json.dump(
+                {
+                    "access_token": self.access_token,
+                    "refresh_token": self.refresh_token,
+                    "token_expires_at": self.token_expires_at,
+                },
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
 
     def _load_session(self):
         if os.path.exists(self.token_file):
@@ -50,10 +56,16 @@ class YandexDiskApiService(metaclass=Singleton):
                     self.refresh_token = data.get("refresh_token")
                     self.token_expires_at = data.get("token_expires_at")
             except (json.JSONDecodeError, IOError) as e:
-                print("Error loading tokens from file:", e)
+                print("Error loading tokens from file.")
+                if ConfigService.get_config().mode == AppMode.DEV:
+                    print(e)
 
     def _is_token_valid(self):
-        return self.access_token and self.token_expires_at and int(time.time()) < self.token_expires_at - 60
+        return (
+            self.access_token
+            and self.token_expires_at
+            and int(time.time()) < self.token_expires_at - 60
+        )
 
     def authenticate(self):
         self._load_session()
@@ -67,7 +79,9 @@ class YandexDiskApiService(metaclass=Singleton):
                 print("access_token refreshed using refresh_token.")
                 return
             except Exception as e:
-                print("Error refreshing token. Proceeding with full authorization.", e)
+                print("Error refreshing token. Proceeding with full authorization.")
+                if ConfigService.get_config().mode == AppMode.DEV:
+                    print(e)
 
         self._full_auth_flow()
 
@@ -78,18 +92,19 @@ class YandexDiskApiService(metaclass=Singleton):
             )
             code = input("Enter the code from the browser: ").strip()
 
-            auth_header = base64.b64encode(f"{self._client_id}:{self._client_secret}".encode()).decode()
+            auth_header = base64.b64encode(
+                f"{self._client_id}:{self._client_secret}".encode()
+            ).decode()
             headers = {
                 "Authorization": f"Basic {auth_header}",
-                "Content-Type": "application/x-www-form-urlencoded"
+                "Content-Type": "application/x-www-form-urlencoded",
             }
 
-            data = {
-                "grant_type": "authorization_code",
-                "code": code
-            }
+            data = {"grant_type": "authorization_code", "code": code}
 
-            response = requests.post("https://oauth.yandex.ru/token", headers=headers, data=data)
+            response = requests.post(
+                "https://oauth.yandex.ru/token", headers=headers, data=data
+            )
             if not response.ok:
                 raise HttpException(response.text, response.status_code)
 
@@ -97,24 +112,27 @@ class YandexDiskApiService(metaclass=Singleton):
             self._save_session(tokens)
             print("Authentication completed successfully.")
         except Exception as e:
-            print("Error obtaining token:", e)
+            print("Error obtaining token.")
+            if ConfigService.get_config().mode == AppMode.DEV:
+                print(e)
 
     def _refresh_token(self):
         if not self.refresh_token:
             raise Exception("refresh_token is missing.")
 
-        auth_header = base64.b64encode(f"{self._client_id}:{self._client_secret}".encode()).decode()
+        auth_header = base64.b64encode(
+            f"{self._client_id}:{self._client_secret}".encode()
+        ).decode()
         headers = {
             "Authorization": f"Basic {auth_header}",
-            "Content-Type": "application/x-www-form-urlencoded"
+            "Content-Type": "application/x-www-form-urlencoded",
         }
 
-        data = {
-            "grant_type": "refresh_token",
-            "refresh_token": self.refresh_token
-        }
+        data = {"grant_type": "refresh_token", "refresh_token": self.refresh_token}
 
-        response = requests.post("https://oauth.yandex.ru/token", headers=headers, data=data)
+        response = requests.post(
+            "https://oauth.yandex.ru/token", headers=headers, data=data
+        )
         if not response.ok:
             raise HttpException(response.text, response.status_code)
 
@@ -126,30 +144,41 @@ class YandexDiskApiService(metaclass=Singleton):
 
     def get_dir_files_list(self, path):
         try:
-            response = requests.get(self.base_url + "/disk/resources",
-                                    params={"path": f"{ConfigService.get_config().root}{path}"},
-                                    headers=self._get_base_headers())
+            response = requests.get(
+                self.base_url + "/disk/resources",
+                params={"path": f"{ConfigService.get_config().root}{path}"},
+                headers=self._get_base_headers(),
+            )
             if not response.ok:
                 raise HttpException(response.text, response.status_code)
             return response.json()
         except HttpException as e:
             print("Failed to retrieve directory file list.")
-            print(e)
+            if e.message["description"]:
+                print(e.message["description"])
+            elif ConfigService.get_config().mode == AppMode.DEV:
+                print(e)
 
     def get_disk_info(self):
         try:
-            response = requests.get(self.base_url + "/disk", headers=self._get_base_headers())
+            response = requests.get(
+                self.base_url + "/disk", headers=self._get_base_headers()
+            )
             if not response.ok:
                 raise HttpException(response.text, response.status_code)
             return response.json()
         except HttpException as e:
             print("Unable to fetch disk information.")
-            print(e)
+            if ConfigService.get_config().mode == AppMode.DEV:
+                print(e)
 
     def get_file_meta(self, path):
         try:
-            response = requests.get(self.base_url + "/disk/resources", params={"path": path},
-                                    headers=self._get_base_headers())
+            response = requests.get(
+                self.base_url + "/disk/resources",
+                params={"path": path},
+                headers=self._get_base_headers(),
+            )
             if response.status_code == 404:
                 return None
             if not response.ok:
@@ -157,24 +186,28 @@ class YandexDiskApiService(metaclass=Singleton):
             return response.json()
         except HttpException as e:
             print("Failed to get file metadata.")
-            print(e)
+            if ConfigService.get_config().mode == AppMode.DEV:
+                print(e)
 
     def is_file_exists(self, path):
         return bool(self.get_file_meta(path))
 
     def __get_download_link(self, path):
         try:
-            response = requests.get(self.base_url + "/disk/resources/download",
-                                    params={"path": path},
-                                    headers=self._get_base_headers())
+            response = requests.get(
+                self.base_url + "/disk/resources/download",
+                params={"path": path},
+                headers=self._get_base_headers(),
+            )
             if not response.ok:
                 raise HttpException(response.text, response.status_code)
             return response.json()
         except HttpException as e:
             print("Failed to get download link.")
-            print(e)
+            if ConfigService.get_config().mode == AppMode.DEV:
+                print(e)
 
-    def download_file(self, path, save_to=None):
+    def download_file(self, path, save_to):
         try:
             download_link_json = self.__get_download_link(path)
             download_url = download_link_json["href"]
@@ -183,28 +216,30 @@ class YandexDiskApiService(metaclass=Singleton):
             if not response.ok:
                 raise HttpException(response.text, response.status_code)
 
-            filename = save_to or os.path.basename(path)
-
-            with open(filename, 'wb') as f:
+            with open(save_to, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
-            print(f"File downloaded and saved as: {filename}")
+            print(f"File downloaded and saved as: {save_to}")
 
         except HttpException as e:
             print("Error occurred while downloading the file.")
-            print(e)
+            if ConfigService.get_config().mode == AppMode.DEV:
+                print(e)
 
     def __get_upload_link(self, path, overwrite=False):
         try:
-            response = requests.get(self.base_url + "/disk/resources/upload",
-                                    params={"path": path, "overwrite": overwrite},
-                                    headers=self._get_base_headers())
+            response = requests.get(
+                self.base_url + "/disk/resources/upload",
+                params={"path": path, "overwrite": overwrite},
+                headers=self._get_base_headers(),
+            )
             if not response.ok:
                 raise HttpException(response.text, response.status_code)
             return response.json()
         except HttpException as e:
             print("Failed to retrieve upload link.")
-            print(e)
+            if ConfigService.get_config().mode == AppMode.DEV:
+                print(e)
 
     def upload_file(self, path, destination, overwrite=False):
         try:
@@ -215,43 +250,58 @@ class YandexDiskApiService(metaclass=Singleton):
             print(f"File '{path}' uploaded to '{destination}'.")
         except HttpException as e:
             print("File upload failed.")
-            print(e)
+            if ConfigService.get_config().mode == AppMode.DEV:
+                print(e)
 
     def make_dir(self, path):
         try:
-            response = requests.put(self.base_url + "/disk/resources", params={"path": path},
-                                    headers=self._get_base_headers())
+            response = requests.put(
+                self.base_url + "/disk/resources",
+                params={"path": path},
+                headers=self._get_base_headers(),
+            )
             if not response.ok:
                 raise HttpException(response.text, response.status_code)
             return response.json()
         except HttpException as e:
             print("Failed to create directory.")
-            print(e)
+            if ConfigService.get_config().mode == AppMode.DEV:
+                print(e)
 
     def remove_file_or_dir(self, path):
         try:
-            response = requests.delete(self.base_url + "/disk/resources",
-                                       params={"path": path, "permanently": "true", "force_async": "true"},
-                                       headers=self._get_base_headers())
+            response = requests.delete(
+                self.base_url + "/disk/resources",
+                params={"path": path, "permanently": "true", "force_async": "true"},
+                headers=self._get_base_headers(),
+            )
             if not response.ok:
                 raise HttpException(response.text, response.status_code)
             return response.json()
         except HttpException as e:
             print("Error deleting file or folder.")
-            print(e)
+            if ConfigService.get_config().mode == AppMode.DEV:
+                print(e)
 
     def update_file(self, path, destination):
         self.upload_file(path, destination, overwrite=True)
 
     def move(self, from_rel_path, to_rel_path, overwrite=False):
         try:
-            response = requests.post(self.base_url + "/disk/resources/move",
-                                     params={"from": from_rel_path, "path": to_rel_path, "overwrite": overwrite,
-                                             "force_async": "true"},
-                                     headers=self._get_base_headers())
+            response = requests.post(
+                self.base_url + "/disk/resources/move",
+                params={
+                    "from": from_rel_path,
+                    "path": to_rel_path,
+                    "overwrite": overwrite,
+                    "force_async": "true",
+                },
+                headers=self._get_base_headers(),
+            )
             if not response.ok:
                 raise HttpException(response.text, response.status_code)
             return response.json()
         except HttpException as e:
             print("Failed to move file or directory.")
-            print(e)
+            if ConfigService.get_config().mode == AppMode.DEV:
+                print(e)

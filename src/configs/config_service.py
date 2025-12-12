@@ -8,11 +8,11 @@ from src.core.types.google_service_config import GoogleServiceConfig
 
 
 class ConfigService:
-    _base_dir = Path(__file__).parent.parent.parent.resolve()
+    _base_dir = Path(__file__).parent.parent.resolve()
 
-    _config_path = _base_dir / 'config.json'
-    yandex_config_path = _base_dir / 'yandex_credentials.json'
-    google_config_path = _base_dir / 'google_credentials.json'
+    _config_path = _base_dir / "config.json"
+    yandex_config_path = _base_dir / "yandex_credentials.json"
+    google_config_path = _base_dir / "google_credentials.json"
 
     _config = None
     _yandex_config = None
@@ -20,13 +20,19 @@ class ConfigService:
 
     @staticmethod
     def init_configs():
-        with ConfigService._config_path.open('r', encoding='utf-8') as config_file:
+        with ConfigService._config_path.open("r", encoding="utf-8") as config_file:
             ConfigService._config = AppConfig(json.load(config_file))
 
-        with ConfigService.yandex_config_path.open('r', encoding='utf-8') as yandex_config_file:
-            ConfigService._yandex_config = YandexServiceConfig(json.load(yandex_config_file))
+        with ConfigService.yandex_config_path.open(
+            "r", encoding="utf-8"
+        ) as yandex_config_file:
+            ConfigService._yandex_config = YandexServiceConfig(
+                json.load(yandex_config_file)
+            )
 
-        with ConfigService.google_config_path.open('r', encoding='utf-8') as google_config_file:
+        with ConfigService.google_config_path.open(
+            "r", encoding="utf-8"
+        ) as google_config_file:
             google_data = json.load(google_config_file)
             ConfigService._google_config = GoogleServiceConfig.from_dict(google_data)
 
@@ -44,7 +50,7 @@ class ConfigService:
 
     @staticmethod
     def add_service(service: CloudServices):
-        with ConfigService._config_path.open('r', encoding='utf-8') as config_file:
+        with ConfigService._config_path.open("r", encoding="utf-8") as config_file:
             config_data = json.load(config_file)
 
         services = config_data.get("services", [])
@@ -54,7 +60,7 @@ class ConfigService:
             services.append(service_name)
             config_data["services"] = services
 
-            with ConfigService._config_path.open('w', encoding='utf-8') as config_file:
+            with ConfigService._config_path.open("w", encoding="utf-8") as config_file:
                 json.dump(config_data, config_file, ensure_ascii=False, indent=2)
 
             ConfigService._config = AppConfig(config_data)
@@ -62,13 +68,13 @@ class ConfigService:
 
     @staticmethod
     def change_root(path):
-        with ConfigService._config_path.open('r', encoding='utf-8') as config_file:
+        with ConfigService._config_path.open("r", encoding="utf-8") as config_file:
             config_data = json.load(config_file)
 
         config_data["path"] = path
-        config_data["root"] = '/' + Path(path).name
+        config_data["root"] = "/" + Path(path).name
 
-        with ConfigService._config_path.open('w', encoding='utf-8') as config_file:
+        with ConfigService._config_path.open("w", encoding="utf-8") as config_file:
             json.dump(config_data, config_file, ensure_ascii=False, indent=2)
 
         ConfigService._config = AppConfig(config_data)

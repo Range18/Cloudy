@@ -8,8 +8,8 @@ test
 .env
 
 # Credentials
-yandex_credentials.json
-google_credentials.json
+src/yandex_credentials.json
+src/google_credentials.json
 
 # Sessions
 google_session.json

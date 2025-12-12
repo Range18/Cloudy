@@ -2,5 +2,5 @@ from enum import Enum
 
 
 class AppMode(Enum):
-    PROD = "PROD",
+    PROD = ("PROD",)
     DEV = "DEV"

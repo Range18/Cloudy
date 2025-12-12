@@ -1,3 +1,4 @@
+import os
 import sys
 import threading
 
@@ -40,12 +41,16 @@ def main():
             if user_input.lower() in ("exit", "quit"):
                 print("Exiting program...")
                 break
-            elif user_input.startswith("ls "):
+            elif user_input.startswith("ls"):
                 path = user_input[3:].strip()
                 cloud_service.get_dir_files_list(path)
             elif user_input.startswith("get "):
-                path = user_input[4:].strip()
-                cloud_service.download_file(path)
+                path, save_to = user_input[4:].strip().split(" ")
+                cloud_service.download_file(path, save_to)
+            elif user_input.startswith("mkdir "):
+                path = user_input[6:].strip()
+                os.mkdir(ConfigService.get_config().path + path)
+                cloud_service.make_dir(path)
             elif not user_input:
                 continue
             else:
@@ -56,13 +61,13 @@ def main():
         except Exception as e:
             if config.mode == AppMode.DEV:
                 import traceback
+
                 traceback.print_exc()
             elif isinstance(e, HttpException):
                 print(f"Error: {e}")
-                print(">")
             else:
                 print("Unexpected error occurred. Try again.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
